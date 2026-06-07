@@ -1,0 +1,23 @@
+{
+  "name": "Aeris Weather",
+  "short_name": "Aeris",
+  "version": "1.0.0",
+  "description": "A modern and sleek weather application by Da1u03h.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#2c3e50",
+  "theme_color": "#ff7f00",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
