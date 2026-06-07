@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aeris - هواشناسی</title>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg1:#0f0c29;--bg2:#302b63;--bg3:#24243e;
+  --glass:rgba(255,255,255,0.08);
+  --glass-b:rgba(255,255,255,0.15);
+  --glass-h:rgba(255,255,255,0.13);
+  --text:#fff;--text2:rgba(255,255,255,0.65);
+  --accent:#6c63ff;--accent2:#a78bfa;
+  --font:'Vazirmatn','Inter',sans-serif;
+  --tr:0.4s cubic-bezier(0.4,0,0.2,1);
+}
+[data-theme="light"]{
+  --bg1:#e0eafc;--bg2:#cfdef3;--bg3:#a8c0ff;
+  --glass:rgba(255,255,255,0.45);
+  --glass-b:rgba(255,255,255,0.7);
+  --glass-h:rgba(255,255,255,0.6);
+  --text:#1a1a2e;--text2:rgba(26,26,46,0.65);
+}
+
+body{font-family:var(--font);min-height:100vh;overflow-x:hidden;color:var(--text)}
+
+/* BG */
+#bg{position:fixed;inset:0;z-index:0;background:linear-gradient(135deg,var(--bg1),var(--bg2),var(--bg3));transition:background var(--tr)}
+.orb{position:absolute;border-radius:50%;filter:blur(80px);opacity:.4;animation:floatOrb 8s ease-in-out infinite}
+.o1{width:400px;height:400px;background:radial-gradient(circle,#6c63ff,transparent);top:-100px;left:-100px;animation-delay:0s}
+.o2{width:300px;height:300px;background:radial-gradient(circle,#f093fb,transparent);bottom:-80px;right:-80px;animation-delay:-3s}
+.o3{width:250px;height:250px;background:radial-gradient(circle,#4facfe,transparent);top:50%;left:50%;transform:translate(-50%,-50%);animation-delay:-5s}
+@keyframes floatOrb{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(20px,-30px) scale(1.05)}66%{transform:translate(-15px,20px) scale(0.95)}}
+.o3{animation:floatOrb3 8s ease-in-out infinite}
+@keyframes floatOrb3{0%,100%{transform:translate(-50%,-50%) scale(1)}33%{transform:translate(calc(-50% + 20px),calc(-50% - 30px)) scale(1.05)}66%{transform:translate(calc(-50% - 15px),calc(-50% + 20px)) scale(0.95)}}
+
+/* LOADING */
+#loading{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);transition:opacity .6s,visibility .6s}
+#loading.hide{opacity:0;visibility:hidden;pointer-events:none}
+.ld-logo{font-size:3rem;font-weight:700;letter-spacing:8px;color:#fff;margin-bottom:8px;animation:pulse 1.5s ease-in-out infinite}
+.ld-sub{color:rgba(255,255,255,.5);font-size:.8rem;letter-spacing:3px;margin-bottom:40px}
+.ld-bar{width:200px;height:3px;background:rgba(255,255,255,.1);border-radius:99px;overflow:hidden}
+.ld-fill{height:100%;background:linear-gradient(90deg,#6c63ff,#a78bfa);border-radius:99px;animation:loadbar 2s ease forwards}
+@keyframes loadbar{from{width:0}to{width:100%}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+
+/* LAYOUT */
+#app{position:relative;z-index:1;min-height:100vh;display:flex}
+#main{flex:1;display:flex;flex-direction:column;min-height:100vh;transition:filter var(--tr)}
+#main.blurred{filter:blur(2px);pointer-events:none}
+
+/* OVERLAY */
+#overlay{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.4);backdrop-filter:blur(4px);opacity:0;visibility:hidden;transition:opacity var(--tr),visibility var(--tr)}
+#overlay.on{opacity:1;visibility:visible}
+
+/* SIDEBAR */
+#sidebar{position:fixed;top:0;right:0;width:280px;height:100vh;z-index:200;background:rgba(15,12,41,.9);backdrop-filter:blur(20px);border-left:1px solid var(--glass-b);display:flex;flex-direction:column;transform:translateX(100%);transition:transform var(--tr);overflow-y:auto}
+[data-theme="light"] #sidebar{background:rgba(255,255,255,.85)}
+#sidebar.open{transform:translateX(0)}
+.sb-head{padding:24px 20px 20px;border-bottom:1px solid var(--glass-b);display:flex;align-items:center;justify-content:space-between}
+.sb-logo{font-size:1.4rem;font-weight:700;color:var(--accent2);letter-spacing:2px}
+.sb-nav{padding:16px 12px;flex:1}
+.nav-sec{font-size:.68rem;font-weight:600;color:var(--text2);letter-spacing:2px;text-transform:uppercase;padding:8px 10px 4px;margin-top:8px}
+.nav-item{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;cursor:pointer;color:var(--text2);font-size:.9rem;transition:all .25s;border:1px solid transparent;margin-bottom:4px}
+.nav-item:hover,.nav-item.active{color:var(--text);border-color:var(--glass-b);background:var(--glass)}
+.nav-item .material-icons{font-size:20px}
+.sb-foot{padding:16px 20px;border-top:1px solid var(--glass-b);font-size:.75rem;color:var(--text2);text-align:center}
+
+/* HEADER */
+header{padding:16px 24px;display:flex;align-items:center;justify-content:space-between;background:var(--glass);backdrop-filter:blur(20px);border-bottom:1px solid var(--glass-b);position:sticky;top:0;z-index:50}
+.h-left{display:flex;align-items:center;gap:14px}
+.app-title{font-size:1.3rem;font-weight:700;letter-spacing:3px;color:var(--accent2)}
+.app-sub{font-size:.72rem;color:var(--text2)}
+.h-right{display:flex;align-items:center;gap:10px}
+.icon-btn{width:40px;height:40px;border-radius:12px;border:1px solid var(--glass-b);background:var(--glass);color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .25s;backdrop-filter:blur(10px)}
+.icon-btn:hover{background:var(--glass-h);transform:translateY(-1px)}
+.icon-btn .material-icons{font-size:20px}
+.lang-btn{padding:0 14px;height:40px;border-radius:12px;border:1px solid var(--glass-b);background:var(--glass);color:var(--text);cursor:pointer;font-family:var(--font);font-size:.8rem;font-weight:500;transition:all .25s;backdrop-filter:blur(10px)}
+.lang-btn:hover{background:var(--glass-h);transform:translateY(-1px)}
+
+/* PAGES */
+.page{display:none;padding:24px;animation:fadeSlide .4s ease}
+.page.active{display:block}
+@keyframes fadeSlide{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* SEARCH */
+.search-wrap{max-width:600px;margin:0 auto 24px;position:relative}
+.search-box{display:flex;align-items:center;gap:0;background:var(--glass);backdrop-filter:blur(20px);border:1px solid var(--glass-b);border-radius:16px;padding:4px 4px 4px 16px;transition:border-color .25s,box-shadow .25s}
+.search-box:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(108,99,255,.2)}
+.search-box .material-icons{color:var(--text2);font-size:22px}
+#s-input{flex:1;background:none;border:none;outline:none;color:var(--text);font-family:var(--font);font-size:.95rem;padding:10px 12px;direction:inherit}
+#s-input::placeholder{color:var(--text2)}
+.s-btn{padding:10px 20px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;cursor:pointer;font-family:var(--font);font-size:.85rem;font-weight:600;transition:opacity .25s,transform .25s;white-space:nowrap}
+.s-btn:hover{opacity:.85;transform:translateY(-1px)}
+#city-dd{position:absolute;top:calc(100% + 8px);left:0;right:0;background:rgba(15,12,41,.97);backdrop-filter:blur(20px);border:1px solid var(--glass-b);border-radius:14px;max-height:240px;overflow-y:auto;z-index:300;display:none;box-shadow:0 20px 40px rgba(0,0,0,.4)}
+[data-theme="light"] #city-dd{background:rgba(255,255,255,.97)}
+#city-dd.show{display:block;animation:fadeSlide .2s ease}
+.c-opt{padding:12px 16px;cursor:pointer;display:flex;align-items:center;gap:10px;color:var(--text);font-size:.9rem;transition:background .15s;border-bottom:1px solid var(--glass-b)}
+.c-opt:last-child{border-bottom:none}
+.c-opt:hover{background:var(--glass)}
+.c-opt .material-icons{font-size:18px;color:var(--accent2)}
+
+/* LOCATION BTN */
+.loc-btn{display:flex;align-items:center;gap:8px;margin:0 auto 28px;padding:10px 20px;background:var(--glass);border:1px solid var(--glass-b);border-radius:12px;color:var(--text);cursor:pointer;font-family:var(--font);font-size:.85rem;transition:all .25s;backdrop-filter:blur(10px)}
+.loc-btn:hover{background:var(--glass-h);transform:translateY(-1px)}
+.loc-btn .material-icons{color:var(--accent2);font-size:20px}
+
+/* GLASS CARD */
+.card{background:var(--glass);backdrop-filter:blur(20px);border:1px solid var(--glass-b);border-radius:20px;padding:24px;transition:transform .25s,box-shadow .25s;margin-bottom:20px}
+.card:hover{transform:translateY(-2px);box-shadow:0 20px 40px rgba(0,0,0,.2)}
+
+/* WEATHER */
+.w-main{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px}
+.city-name{font-size:1.6rem;font-weight:700}
+.date-str{font-size:.85rem;color:var(--text2);margin-top:4px}
+.temp{font-size:4.5rem;font-weight:300;line-height:1;margin:12px 0}
+.temp sup{font-size:1.5rem;vertical-align:super}
+.desc{font-size:1rem;color:var(--text2);text-transform:capitalize}
+.w-icon-wrap{display:flex;flex-direction:column;align-items:center;gap:8px}
+.w-icon{font-size:80px;color:var(--accent2);filter:drop-shadow(0 0 20px rgba(167,139,250,.4))}
+.feels{font-size:.8rem;color:var(--text2);text-align:center}
+
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:16px;margin-top:20px}
+.stat{background:var(--glass);border:1px solid var(--glass-b);border-radius:16px;padding:18px;text-align:center;transition:transform .25s}
+.stat:hover{transform:translateY(-2px)}
+.stat .material-icons{font-size:28px;color:var(--accent2);margin-bottom:8px}
+.stat-val{font-size:1.4rem;font-weight:600;margin-bottom:4px}
+.stat-lbl{font-size:.75rem;color:var(--text2)}
+
+/* FORECAST */
+.sec-title{font-size:1rem;font-weight:600;margin-bottom:16px;color:var(--text2);letter-spacing:1px;text-transform:uppercase}
+.fc-row{display:flex;gap:12px;overflow-x:auto;padding-bottom:4px}
+.fc-row::-webkit-scrollbar{height:4px}
+.fc-row::-webkit-scrollbar-track{background:var(--glass);border-radius:99px}
+.fc-row::-webkit-scrollbar-thumb{background:var(--accent);border-radius:99px}
+.fc-card{flex:0 0 auto;min-width:100px;background:var(--glass);border:1px solid var(--glass-b);border-radius:14px;padding:14px 12px;text-align:center;transition:transform .25s,background .25s}
+.fc-card:hover{transform:translateY(-3px);background:var(--glass-h)}
+.fc-day{font-size:.8rem;color:var(--text2);margin-bottom:8px;font-weight:500}
+.fc-icon{font-size:28px;color:var(--accent2);margin:6px 0}
+.fc-temps{font-size:.85rem;font-weight:500}
+.fc-temps .lo{color:var(--text2);font-size:.8rem}
+
+/* STATE BOXES */
+.state-box{text-align:center;padding:60px 20px;color:var(--text2)}
+.state-box .material-icons{font-size:64px;margin-bottom:16px;opacity:.4;display:block}
+.state-box h3{font-size:1.1rem;margin-bottom:8px;color:var(--text)}
+.state-box p{font-size:.875rem}
+.state-box.err .material-icons{color:#f87171;opacity:1}
+
+/* SPINNER */
+.spinner{width:40px;height:40px;border:3px solid var(--glass-b);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:60px auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ABOUT */
+.about-hero{text-align:center;padding:40px 20px}
+.a-logo{font-size:3rem;font-weight:800;letter-spacing:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.a-ver{display:inline-block;margin-top:8px;padding:4px 14px;background:var(--glass);border:1px solid var(--glass-b);border-radius:99px;font-size:.8rem;color:var(--text2)}
+.a-tag{margin-top:12px;font-size:1rem;color:var(--text2)}
+.about-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;margin-bottom:20px}
+.a-feat{background:var(--glass);border:1px solid var(--glass-b);border-radius:16px;padding:20px;text-align:center;transition:transform .25s}
+.a-feat:hover{transform:translateY(-3px)}
+.a-feat .material-icons{font-size:32px;color:var(--accent2);margin-bottom:10px}
+.a-feat h4{font-size:.9rem;margin-bottom:6px}
+.a-feat p{font-size:.78rem;color:var(--text2)}
+.dev-card{background:var(--glass);border:1px solid var(--glass-b);border-radius:16px;padding:24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.dev-av{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:28px;color:#fff;font-weight:700;flex-shrink:0}
+.dev-info h3{font-size:1.1rem;font-weight:700}
+.dev-info p{font-size:.82rem;color:var(--text2);margin-top:4px}
+.dev-badge{margin-top:8px;display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:99px;font-size:.75rem;color:#fff;font-weight:500}
+.dev-badge .material-icons{font-size:14px}
+
+/* SETTINGS */
+.set-group{margin-bottom:24px}
+.set-gtitle{font-size:.75rem;font-weight:600;color:var(--text2);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px}
+.set-item{background:var(--glass);border:1px solid var(--glass-b);border-radius:14px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.set-left{display:flex;align-items:center;gap:14px}
+.set-left .material-icons{color:var(--accent2)}
+.set-left h4{font-size:.9rem;font-weight:500}
+.set-left p{font-size:.78rem;color:var(--text2);margin-top:2px}
+.toggle{width:44px;height:24px;border-radius:99px;background:var(--glass-b);border:none;cursor:pointer;position:relative;transition:background .25s}
+.toggle.on{background:linear-gradient(135deg,var(--accent),var(--accent2))}
+.toggle::after{content:'';position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;top:3px;left:3px;transition:transform .25s;box-shadow:0 2px 4px rgba(0,0,0,.3)}
+.toggle.on::after{transform:translateX(20px)}
+.gl-select{background:var(--glass);border:1px solid var(--glass-b);border-radius:10px;color:var(--text);font-family:var(--font);font-size:.85rem;padding:6px 12px;cursor:pointer;outline:none}
+
+/* RESPONSIVE */
+@media(max-width:600px){
+  .page{padding:16px}
+  .temp{font-size:3rem}
+  .w-icon{font-size:60px}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  header{padding:12px 16px}
+  .app-sub{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading"><div class="ld-logo">AERIS</div>
+  <div class="ld-sub">WEATHER INTELLIGENCE</div>
+  <div class="ld-bar"><div class="ld-fill"></div></div>
+</div>
+
+<!-- BACKGROUND -->
+<div id="bg">
+  <div class="orb o1"></div>
+  <div class="orb o2"></div>
+  <div class="orb o3"></div>
+</div>
+
+<!-- SIDEBAR OVERLAY -->
+<div id="overlay" onclick="closeSidebar()"></div>
+
+<!-- SIDEBAR -->
+<nav id="sidebar">
+  <div class="sb-head">
+    <span class="sb-logo">AERIS</span>
+    <button class="icon-btn" onclick="closeSidebar()">
+      <span class="material-icons">close</span>
+    </button>
+  </div>
+  <div class="sb-nav">
+    <div class="nav-sec" id="t-nav-main">اصلی</div>
+    <div class="nav-item active" id="nav-weather" onclick="showPage('weather')">
+      <span class="material-icons">cloud</span>
+      <span id="t-nav-w">آب‌وهوا</span>
+    </div>
+    <div class="nav-item" id="nav-forecast" onclick="showPage('forecast')">
+      <span class="material-icons">calendar_today</span>
+      <span id="t-nav-f">پیش‌بینی</span>
+    </div>
+    <div class="nav-sec" id="t-nav-cfg">تنظیمات</div>
+    <div class="nav-item" id="nav-settings" onclick="showPage('settings')">
+      <span class="material-icons">settings</span>
+      <span id="t-nav-s">تنظیمات</span>
+    </div>
+    <div class="nav-item" id="nav-about" onclick="showPage('about')">
+      <span class="material-icons">info</span>
+      <span id="t-nav-a">درباره</span>
+    </div>
+  </div>
+  <div class="sb-foot">Aeris v1.0.0 &copy; Da1u03h</div>
+</nav>
+
+<!-- APP -->
+<div id="app">
+  <div id="main">
+
+    <header>
+      <div class="h-left">
+        <button class="icon-btn" onclick="openSidebar()">
+          <span class="material-icons">menu</span>
+        </button><div>
+          <div class="app-title">AERIS</div>
+          <div class="app-sub" id="t-tagline">هواشناسی حرفه‌ای</div>
+        </div>
+      </div>
+      <div class="h-right">
+        <button class="lang-btn" id="lang-btn" onclick="toggleLang()">EN</button>
+        <button class="icon-btn" onclick="toggleTheme()">
+          <span class="material-icons" id="theme-icon">light_mode</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- WEATHER PAGE -->
+    <div class="page active" id="page-weather">
+      <div class="search-wrap">
+        <div class="search-box">
+          <span class="material-icons">search</span>
+          <input id="s-input" type="text" placeholder="جستجوی شهر..." autocomplete="off"oninput="filterCities(this.value)" onkeydown="searchKey(event)">
+          <button class="s-btn" id="t-sbtn" onclick="doSearch()">جستجو</button>
+        </div><div id="city-dd"></div>
+      </div>
+      <div style="text-align:center">
+        <button class="loc-btn" onclick="getLocation()">
+          <span class="material-icons">my_location</span>
+          <span id="t-loc">موقعیت من</span>
+        </button>
+      </div>
+      <div id="w-content">
+        <div class="state-box">
+          <span class="material-icons">cloud_queue</span>
+          <h3 id="t-empty1">دنبال چه شهری هستی؟</h3>
+          <p id="t-empty2">شهر خود را جستجو کن یا موقعیتت رو بده</p>
+        </div></div>
+    </div>
+
+    <!-- FORECAST PAGE -->
+    <div class="page" id="page-forecast">
+      <div id="fc-content">
+        <div class="state-box">
+          <span class="material-icons">calendar_today</span>
+          <h3 id="t-fc1">پیش‌بینی در دسترس نیست</h3>
+          <p id="t-fc2">ابتدا یک شهر را جستجو کنید</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS PAGE -->
+    <div class="page" id="page-settings">
+      <div style="max-width:600px;margin:0 auto">
+        <div class="set-group">
+          <div class="set-gtitle" id="t-appear">ظاهر</div>
+          <div class="set-item">
+            <div class="set-left">
+              <span class="material-icons">dark_mode</span>
+              <div><h4 id="t-dark">حالت تاریک</h4><p id="t-dark2">رابط کاربری تیره</p></div>
+            </div>
+            <button class="toggle on" id="dark-toggle" onclick="toggleTheme()"></button>
+          </div><div class="set-item">
+            <div class="set-left">
+              <span class="material-icons">language</span>
+              <div><h4 id="t-lang">زبان</h4><p id="t-lang2">فارسی / انگلیسی</p></div>
+            </div>
+            <select class="gl-select" id="lang-sel" onchange="setLang(this.value)">
+              <option value="fa">فارسی</option>
+              <option value="en">English</option>
+            </select>
+          </div>
+          <div class="set-item">
+            <div class="set-left">
+              <span class="material-icons">thermostat</span>
+              <div><h4 id="t-unit">واحد دما</h4><p id="t-unit2">سانتیگراد / فارنهایت</p></div>
+            </div>
+            <select class="gl-select" id="unit-sel" onchange="setUnit(this.value)">
+              <option value="metric">°C</option>
+              <option value="imperial">°F</option>
+            </select>
+          </div>
+        </div>
+        <div class="set-group">
+          <div class="set-gtitle" id="t-data">داده‌ها</div>
+          <div class="set-item">
+            <div class="set-left">
+              <span class="material-icons">key</span>
+              <div><h4 id="t-api">API Key</h4><p id="t-api2">کلید OpenWeatherMap</p></div>
+            </div>
+            <button class="icon-btn" onclick="setApiKey()">
+              <span class="material-icons">edit</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ABOUT PAGE -->
+    <div class="page" id="page-about">
+      <div style="max-width:700px;margin:0 auto">
+        <div class="card about-hero">
+          <div class="a-logo">AERIS</div>
+          <div class="a-ver">v1.0.0</div>
+          <p class="a-tag" id="t-about-tag">اپلیکیشن هواشناسی حرفه‌ای و مدرن</p>
+        </div>
+        <div class="about-grid">
+          <div class="a-feat"><span class="material-icons">location_on</span><h4 id="t-f1h">مکان‌یابی هوشمند</h4><p id="t-f1p">تشخیص خودکار موقعیت</p></div>
+          <div class="a-feat"><span class="material-icons">speed</span><h4 id="t-f2h">آپدیت لحظه‌ای</h4><p id="t-f2p">اطلاعات زنده آب‌وهوا</p></div>
+          <div class="a-feat"><span class="material-icons">calendar_month</span><h4 id="t-f3h">پیش‌بینی ۵ روزه</h4><p id="t-f3p">پیش‌بینی دقیق آینده</p></div>
+          <div class="a-feat"><span class="material-icons">palette</span><h4 id="t-f4h">طراحی مدرن</h4><p id="t-f4p">Glassmorphism</p></div>
+          <div class="a-feat"><span class="material-icons">translate</span><h4 id="t-f5h">دو زبانه</h4><p id="t-f5p">فارسی و انگلیسی</p></div>
+          <div class="a-feat"><span class="material-icons">phone_android</span><h4 id="t-f6h">ریسپانسیو</h4><p id="t-f6p">موبایل و دسکتاپ</p></div>
+        </div>
+        <div class="dev-card">
+          <div class="dev-av">D</div>
+          <div class="dev-info">
+            <h3>Da1u03h</h3>
+            <p id="t-dev-p">Frontend Engineer | UI/UX Designer</p>
+            <div class="dev-badge"><span class="material-icons">code</span>Vanilla JS Expert</div>
+          </div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+// ── STATE ──────────────────────────────────────────
+const S = {
+  theme:  localStorage.getItem('ae_theme')  || 'dark',
+  lang:   localStorage.getItem('ae_lang')   || 'fa',
+  unit:   localStorage.getItem('ae_unit')   || 'metric',
+    apiKey: localStorage.getItem('aeris_apikey') || '344d0f692ced3ed932ebe523eddfeb36',
+  wx: null, fc: null, city: ''
+};
+
+// ── TRANSLATIONS ───────────────────────────────────
+const TR = {
+  fa:{
+    placeholder:'جستجوی شهر...',sbtn:'جستجو',loc:'موقعیت من',
+    e1:'دنبال چه شهری هستی؟',e2:'شهر خود را جستجو کن یا موقعیتت رو بده',
+    tagline:'هواشناسی حرفه‌ای',
+    feels:'احساس دما:',hum:'رطوبت',wind:'باد',pres:'فشار',vis:'دید',rise:'طلوع',set:'غروب',
+    fc_title:'پیش‌بینی ۵ روزه',fc1:'پیش‌بینی در دسترس نیست',fc2:'ابتدا یک شهر را جستجو کنید',
+    ecity:'شهر پیدا نشد',ecity2:'نام شهر را درست وارد کنید',
+    enet:'خطای شبکه',enet2:'اتصال اینترنت را بررسی کنید',
+    eapi:'خطای API Key',eapi2:'کلید نامعتبر است. در تنظیمات وارد کنید.',
+    appear:'ظاهر',data:'داده‌ها',
+    dark:'حالت تاریک',dark2:'رابط کاربری تیره',
+    lang:'زبان',lang2:'فارسی / انگلیسی',
+    unit:'واحد دما',unit2:'سانتیگراد / فارنهایت',
+    api:'API Key',api2:'کلید OpenWeatherMap',
+    about_tag:'اپلیکیشن هواشناسی حرفه‌ای و مدرن',
+    dev_p:'Frontend Engineer | UI/UX Designer',
+    f1h:'مکان‌یابی هوشمند',f1p:'تشخیص خودکار موقعیت',
+    f2h:'آپدیت لحظه‌ای',f2p:'اطلاعات زنده آب‌وهوا',
+    f3h:'پیش‌بینی ۵ روزه',f3p:'پیش‌بینی دقیق آینده',
+    f4h:'طراحی مدرن',f4p:'Glassmorphism',
+    f5h:'دو زبانه',f5p:'فارسی و انگلیسی',
+    f6h:'ریسپانسیو',f6p:'موبایل و دسکتاپ',
+    nav_main:'اصلی',nav_cfg:'تنظیمات',
+    nav_w:'آب‌وهوا',nav_f:'پیش‌بینی',nav_s:'تنظیمات',nav_a:'درباره',
+    key_prompt:'API Key رایگان از openweathermap.org بگیرید:',
+    locating:'در حال مکان‌یابی...',
+    days:['یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنج‌شنبه','جمعه','شنبه']
+  },
+  en:{
+    placeholder:'Search city...',sbtn:'Search',loc:'My Location',
+    e1:'Search for a city',e2:'Type a city name or use your location',
+    tagline:'Professional Weather',
+    feels:'Feels like:',hum:'Humidity',wind:'Wind',pres:'Pressure',vis:'Visibility',rise:'Sunrise',set:'Sunset',
+    fc_title:'5-Day Forecast',fc1:'No forecast available',fc2:'Search for a city first',
+    ecity:'City not found',ecity2:'Please check the city name',
+    enet:'Network Error',enet2:'Check your internet connection',
+    eapi:'API Key Error',eapi2:'Invalid key. Please set it in Settings.',
+    appear:'Appearance',data:'Data',
+    dark:'Dark Mode',dark2:'Dark user interface',
+    lang:'Language',lang2:'Persian / English',
+    unit:'Temperature Unit',unit2:'Celsius / Fahrenheit',
+    api:'API Key',api2:'OpenWeatherMap Key',
+    about_tag:'Professional & Modern Weather App',
+    dev_p:'Frontend Engineer | UI/UX Designer',
+    f1h:'Smart Location',f1p:'Auto-detect user location',
+    f2h:'Live Updates',f2p:'Real-time weather data',
+    f3h:'5-Day Forecast',f3p:'Accurate future forecast',
+    f4h:'Modern Design',f4p:'Glassmorphism',
+    f5h:'Bilingual',f5p:'Persian & English',
+    f6h:'Responsive',f6p:'Mobile & Desktop',
+    nav_main:'Main',nav_cfg:'Configuration',
+    nav_w:'Weather',nav_f:'Forecast',nav_s:'Settings',nav_a:'About',
+    key_prompt:'Get your free API key from openweathermap.org:',
+    locating:'Locating...',
+    days:['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+  }
+};
+
+const t = k => TR[S.lang][k] || k;
+
+// ── CITIES ─────────────────────────────────────────
+const CITIES = [
+  'Tehran','Mashhad','Isfahan','Karaj','Tabriz','Shiraz','Ahvaz','Qom',
+  'Kermanshah','Urmia','Rasht','Zahedan','Hamadan','Kerman','Arak','Yazd',
+  'Ardabil','Bandar Abbas','Eslamshahr','Zanjan','Sanandaj','Khorramabad',
+  'Gorgan','Sari','Babol','Qazvin','Dezful','Birjand','Bojnord',
+  'Ilam','Shahroud','Bushehr','Semnan','Yasuj','Shahrekord',
+  'Khomeini Shahr','Neyshabur','Sabzevar','Amol','Borujerd','Maragheh',
+  'Malayer','Kashan','Najafabad','Abadan','Khorramshahr','Bam','Jiroft',
+  'Zabol','Khash','Iranshahr','Chalus','Nowshahr','Tonekabon','Lahijan',
+  'Bandar Anzali','Astara','Fuman'
+];
+
+// ── ICON MAP ───────────────────────────────────────
+function wxIcon(code) {
+  const m = {
+    '01d':'wb_sunny','01n':'bedtime',
+    '02d':'partly_cloudy_day','02n':'partly_cloudy_night',
+    '03d':'cloud','03n':'cloud','04d':'cloud','04n':'cloud',
+    '09d':'rainy','09n':'rainy','10d':'rainy','10n':'rainy',
+    '11d':'thunderstorm','11n':'thunderstorm',
+    '13d':'ac_unit','13n':'ac_unit',
+    '50d':'foggy','50n':'foggy'
+  };
+  return m[code] || 'cloud';
+}
+
+// ── SIDEBAR ────────────────────────────────────────
+function openSidebar() {
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('overlay').classList.add('on');
+  document.getElementById('main').classList.add('blurred');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('on');
+  document.getElementById('main').classList.remove('blurred');
+}
+
+// ── PAGES ──────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+  closeSidebar();
+}
+
+// ── THEME ──────────────────────────────────────────
+function toggleTheme() {
+  S.theme = S.theme === 'dark' ? 'light' : 'dark';
+  applyTheme();
+  localStorage.setItem('ae_theme', S.theme);
+}
+function applyTheme() {
+  document.documentElement.setAttribute('data-theme', S.theme === 'light' ? 'light' : '');
+  document.getElementById('theme-icon').textContent = S.theme === 'dark' ? 'light_mode' : 'dark_mode';
+  document.getElementById('dark-toggle').classList.toggle('on', S.theme === 'dark');
+}
+
+// ── LANGUAGE ───────────────────────────────────────
+function toggleLang() {
+  S.lang = S.lang === 'fa' ? 'en' : 'fa';
+  applyLang();
+  localStorage.setItem('ae_lang', S.lang);
+}
+function setLang(v) {
+  S.lang = v;
+  applyLang();
+  localStorage.setItem('ae_lang', v);
+}
+function applyLang() {
+  const fa = S.lang === 'fa';
+  document.documentElement.lang = S.lang;
+  document.documentElement.dir = fa ? 'rtl' : 'ltr';
+
+  document.getElementById('lang-btn').textContent  = fa ? 'EN' : 'FA';
+  document.getElementById('lang-sel').value        = S.lang;
+  document.getElementById('t-tagline').textContent = t('tagline');
+  document.getElementById('s-input').placeholder   = t('placeholder');
+  document.getElementById('t-sbtn').textContent    = t('sbtn');
+  document.getElementById('t-loc').textContent     = t('loc');
+
+  // nav
+  document.getElementById('t-nav-main').textContent = t('nav_main');
+  document.getElementById('t-nav-cfg').textContent  = t('nav_cfg');
+  document.getElementById('t-nav-w').textContent    = t('nav_w');
+  document.getElementById('t-nav-f').textContent    = t('nav_f');
+  document.getElementById('t-nav-s').textContent    = t('nav_s');
+  document.getElementById('t-nav-a').textContent    = t('nav_a');
+
+  // weather empty
+  document.getElementById('t-empty1').textContent  = t('e1');
+  document.getElementById('t-empty2').textContent  = t('e2');
+
+  // forecast empty
+  document.getElementById('t-fc1').textContent = t('fc1');
+  document.getElementById('t-fc2').textContent = t('fc2');
+
+  // settings
+  document.getElementById('t-appear').textContent = t('appear');
+  document.getElementById('t-data').textContent   = t('data');
+  document.getElementById('t-dark').textContent   = t('dark');
+  document.getElementById('t-dark2').textContent  = t('dark2');
+  document.getElementById('t-lang').textContent   = t('lang');
+  document.getElementById('t-lang2').textContent  = t('lang2');
+  document.getElementById('t-unit').textContent   = t('unit');
+  document.getElementById('t-unit2').textContent  = t('unit2');
+  document.getElementById('t-api').textContent    = t('api');
+  document.getElementById('t-api2').textContent   = t('api2');
+
+  // about
+  document.getElementById('t-about-tag').textContent = t('about_tag');
+  document.getElementById('t-dev-p').textContent     = t('dev_p');
+  document.getElementById('t-f1h').textContent = t('f1h');
+  document.getElementById('t-f1p').textContent = t('f1p');
+  document.getElementById('t-f2h').textContent = t('f2h');
+  document.getElementById('t-f2p').textContent = t('f2p');
+  document.getElementById('t-f3h').textContent = t('f3h');
+  document.getElementById('t-f3p').textContent = t('f3p');
+  document.getElementById('t-f4h').textContent = t('f4h');
+  document.getElementById('t-f4p').textContent = t('f4p');
+  document.getElementById('t-f5h').textContent = t('f5h');
+  document.getElementById('t-f5p').textContent = t('f5p');
+  document.getElementById('t-f6h').textContent = t('f6h');
+  document.getElementById('t-f6p').textContent = t('f6p');
+
+  if (S.wx) renderWeather(S.wx);
+  if (S.fc) renderForecast(S.fc);
+}
+
+// ── UNIT ───────────────────────────────────────────
+function setUnit(v) {
+  S.unit = v;
+  localStorage.setItem('ae_unit', v);
+  if (S.city) loadWeather(S.city);
+}
+
+// ── API KEY ────────────────────────────────────────
+function setApiKey() {
+  const k = prompt(t('key_prompt'));
+  if (k && k.trim()) {
+    S.apiKey = k.trim();
+    localStorage.setItem('ae_key', S.apiKey);
+  }
+}
+function requireKey() {
+  if (S.apiKey) return true;
+  const k = prompt(t('key_prompt'));
+  if (!k || !k.trim()) return false;
+  S.apiKey = k.trim();
+  localStorage.setItem('ae_key', S.apiKey);
+  return true;
+}
+
+// ── AUTOCOMPLETE ───────────────────────────────────
+function filterCities(v) {
+  const dd = document.getElementById('city-dd');
+  if (!v) { dd.classList.remove('show'); return; }
+  const matches = CITIES.filter(c => c.toLowerCase().startsWith(v.toLowerCase())).slice(0, 8);
+  if (!matches.length) { dd.classList.remove('show'); return; }
+  dd.innerHTML = matches.map(c =>
+    `<div class="c-opt" onclick="selectCity('${c}')">
+      <span class="material-icons">location_city</span>${c}
+    </div>`
+  ).join('');
+  dd.classList.add('show');
+}
+function selectCity(c) {
+  document.getElementById('s-input').value = c;
+  document.getElementById('city-dd').classList.remove('show');
+  loadWeather(c);
+}
+function searchKey(e) {
+  if (e.key === 'Enter') doSearch();
+  if (e.key === 'Escape') document.getElementById('city-dd').classList.remove('show');
+}
+function doSearch() {
+  const v = document.getElementById('s-input').value.trim();
+  if (v) { document.getElementById('city-dd').classList.remove('show'); loadWeather(v); }
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-wrap')) document.getElementById('city-dd').classList.remove('show');
+});
+
+// ── GEOLOCATION ────────────────────────────────────
+function getLocation() {
+  const btn = document.querySelector('.loc-btn');
+  const lbl = document.getElementById('t-loc');
+  lbl.textContent = t('locating');
+  btn.disabled = true;
+
+  if (!navigator.geolocation) { lbl.textContent = t('loc'); btn.disabled = false; return; }
+
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      lbl.textContent = t('loc'); btn.disabled = false;
+      loadWeatherCoords(pos.coords.latitude, pos.coords.longitude);
+    },
+    () => { lbl.textContent = t('loc'); btn.disabled = false; showErr('net'); }
+  );
+}
+
+// ── API ────────────────────────────────────────────
+const BASE = 'https://api.openweathermap.org/data/2.5';
+
+async function loadWeather(city) {
+  if (!requireKey()) return;
+  showSpinner();
+  try {
+    const r = await fetch(`${BASE}/weather?q=${encodeURIComponent(city)}&appid=${S.apiKey}&units=${S.unit}&lang=${S.lang}`);
+    if (r.status === 401) { showErr('api'); return; }
+    if (r.status === 404) { showErr('city'); return; }
+    if (!r.ok) { showErr('net'); return; }
+    const d = await r.json();
+    S.wx = d; S.city = city;
+    renderWeather(d);
+    loadForecast(city);
+  } catch { showErr('net'); }
+}
+
+async function loadWeatherCoords(lat, lon) {
+  if (!requireKey()) return;
+  showSpinner();
+  try {
+    const r = await fetch(`${BASE}/weather?lat=${lat}&lon=${lon}&appid=${S.apiKey}&units=${S.unit}&lang=${S.lang}`);
+    if (!r.ok) { showErr('net'); return; }
+    const d = await r.json();
+    S.wx = d; S.city = d.name;
+    document.getElementById('s-input').value = d.name;
+    renderWeather(d);
+    loadForecastCoords(lat, lon);
+  } catch { showErr('net'); }
+}
+
+async function loadForecast(city) {
+  try {
+    const r = await fetch(`${BASE}/forecast?q=${encodeURIComponent(city)}&appid=${S.apiKey}&units=${S.unit}&lang=${S.lang}`);
+    if (!r.ok) return;
+    const d = await r.json();
+    S.fc = d; renderForecast(d);
+  } catch {}
+}
+
+async function loadForecastCoords(lat, lon) {
+  try {
+    const r = await fetch(`${BASE}/forecast?lat=${lat}&lon=${lon}&appid=${S.apiKey}&units=${S.unit}&lang=${S.lang}`);
+    if (!r.ok) return;
+    const d = await r.json();
+    S.fc = d; renderForecast(d);
+  } catch {}
+}
+
+// ── RENDER HELPERS ─────────────────────────────────
+function showSpinner() {
+  document.getElementById('w-content').innerHTML = '<div class="spinner"></div>';
+}
+
+function showErr(type) {
+  const map = { city:['ecity','ecity2'], net:['enet','enet2'], api:['eapi','eapi2'] };
+  const [k1, k2] = map[type] || map.net;
+  document.getElementById('w-content').innerHTML = `
+    <div class="state-box err">
+      <span class="material-icons">error_outline</span>
+      <h3>${t(k1)}</h3><p>${t(k2)}</p>
+    </div>`;
+}
+
+function fmtTime(ts, tz) {
+  return new Date((ts + tz) * 1000).toISOString().substr(11, 5);
+}
+function dayName(ts) {
+  return t('days')[new Date(ts * 1000).getDay()];
+}
+
+function renderWeather(d) {
+  const u = S.unit === 'metric' ? '°C' : '°F';
+  const wu = S.unit === 'metric' ? 'm/s' : 'mph';
+  const vis = d.visibility ? (d.visibility / 1000).toFixed(1) + ' km' : '--';
+
+  document.getElementById('w-content').innerHTML = `
+    <div class="card">
+      <div class="w-main">
+        <div>
+          <div class="city-name">${d.name}, ${d.sys.country}</div>
+          <div class="date-str">${new Date().toLocaleDateString(S.lang === 'fa' ? 'fa-IR' : 'en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</div>
+          <div class="temp">${Math.round(d.main.temp)}<sup>${u}</sup></div>
+          <div class="desc">${d.weather[0].description}</div>
+        </div>
+        <div class="w-icon-wrap">
+          <span class="material-icons w-icon">${wxIcon(d.weather[0].icon)}</span>
+          <div class="feels">${t('feels')} ${Math.round(d.main.feels_like)}${u}</div>
+        </div>
+      <div class="stats">
+        <div class="stat"><span class="material-icons">water_drop</span><div class="stat-val">${d.main.humidity}%</div><div class="stat-lbl">${t('hum')}</div></div>
+        <div class="stat"><span class="material-icons">air</span><div class="stat-val">${d.wind.speed} ${wu}</div><div class="stat-lbl">${t('wind')}</div></div>
+        <div class="stat"><span class="material-icons">compress</span><div class="stat-val">${d.main.pressure}</div><div class="stat-lbl">${t('pres')} hPa</div></div>
+        <div class="stat"><span class="material-icons">visibility</span><div class="stat-val">${vis}</div><div class="stat-lbl">${t('vis')}</div></div>
+        <div class="stat"><span class="material-icons">wb_twilight</span><div class="stat-val">${fmtTime(d.sys.sunrise,d.timezone)}</div><div class="stat-lbl">${t('rise')}</div></div>
+        <div class="stat"><span class="material-icons">nights_stay</span><div class="stat-val">${fmtTime(d.sys.sunset,d.timezone)}</div><div class="stat-lbl">${t('set')}</div></div></div>
+    </div>`;
+}
+
+function renderForecast(data) {
+  const u = S.unit === 'metric' ? '°C' : '°F';
+  const daily = {};
+  data.list.forEach(item => {
+    const key = new Date(item.dt * 1000).toISOString().substr(0, 10);
+    const h = new Date(item.dt * 1000).getHours();
+    if (!daily[key] || Math.abs(h - 12) < Math.abs(new Date(daily[key].dt * 1000).getHours() - 12)) {
+      daily[key] = item;
+    }
+  });
+
+  const cards = Object.values(daily).slice(0, 5).map(item => `
+    <div class="fc-card">
+      <div class="fc-day">${dayName(item.dt)}</div>
+      <span class="material-icons fc-icon">${wxIcon(item.weather[0].icon)}</span>
+      <div class="fc-temps">
+        ${Math.round(item.main.temp_max)}${u}
+        <span class="lo"> / ${Math.round(item.main.temp_min)}${u}</span>
+      </div>
+    </div>`).join('');
+
+  document.getElementById('fc-content').innerHTML = `
+    <div class="card">
+      <div class="sec-title">${t('fc_title')}</div>
+      <div class="fc-row">${cards}</div>
+    </div>`;
+}
+
+// ── INIT ───────────────────────────────────────────
+function init() {
+  applyTheme();
+  applyLang();
+  document.getElementById('unit-sel').value = S.unit;
+
+  // auto-detect location silently
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      pos => loadWeatherCoords(pos.coords.latitude, pos.coords.longitude),
+      () => {} // silent fail
+    );
+  }
+}
+
+// ── LOADING → INIT ─────────────────────────────────
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    const ld = document.getElementById('loading');
+    ld.classList.add('hide');
+    setTimeout(() => { ld.style.display = 'none'; init(); }, 600);
+  }, 2000);
+});
+</script>
+</body>
+</html>
